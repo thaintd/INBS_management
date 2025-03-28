@@ -68,6 +68,18 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
               <i className="bi bi-palette me-2"></i> Quản lý Service
             </a>
           </li>
+          <li className="nav-item">
+            <a
+              className={`nav-link text-white d-flex align-items-center ${activeTab === "booking" ? "active" : ""}`}
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveTab("booking");
+              }}
+            >
+              <i className="bi bi-palette me-2"></i> Quản lý Booking
+            </a>
+          </li>
         </ul>
       </div>
     </nav>

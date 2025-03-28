@@ -6,6 +6,7 @@ import StoreManagement from "./StoreManagement";
 import ArtistManagement from "./ArtistManagement";
 import DesignManagement from "./DesignManagement";
 import ServiceManagement from "./ServiceManagement";
+import BookingManagement from "./BookingManagement";
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -20,6 +21,8 @@ const AdminDashboard = () => {
         return <DesignManagement />;
       case "service":
         return <ServiceManagement />;
+        case "booking":
+          return <BookingManagement/>;
       default:
         return <Dashboard setActiveTab={setActiveTab} />;
     }
