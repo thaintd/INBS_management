@@ -210,6 +210,36 @@ const BookingManagement = () => {
         setCurrentPage(page);
     };
 
+    const getStatusBadge = (status) => {
+        const statusConfig = {
+            '-1': { label: 'Đã hủy', color: 'danger' },
+            '0': { label: 'Chờ xác nhận', color: 'warning' },
+            '1': { label: 'Đã xác nhận', color: 'info' },
+            '2': { label: 'Đang phục vụ', color: 'primary' },
+            '3': { label: 'Hoàn thành', color: 'success' }
+        };
+
+        const config = statusConfig[status] || { label: 'Không xác định', color: 'secondary' };
+
+        return (
+            <span className={`badge bg-${config.color} bg-opacity-10 text-${config.color} px-2 py-1 rounded-pill`}>
+                <i className={`bi bi-${getStatusIcon(status)} me-1`}></i>
+                {config.label}
+            </span>
+        );
+    };
+
+    const getStatusIcon = (status) => {
+        switch (status) {
+            case -1: return 'x-circle';
+            case 0: return 'clock';
+            case 1: return 'check-circle';
+            case 2: return 'scissors';
+            case 3: return 'check-circle-fill';
+            default: return 'question-circle';
+        }
+    };
+
     const renderTableContent = () => {
         if (isLoading) {
             return (
@@ -241,7 +271,7 @@ const BookingManagement = () => {
 
         return bookings.map((booking) => (
             <React.Fragment key={booking.ID}>
-                <tr>
+                <tr className={booking.Status === -1 ? 'table-light' : ''}>
                     <td>
                         <button 
                             className="btn btn-sm btn-link"
@@ -252,14 +282,43 @@ const BookingManagement = () => {
                     </td>
                     <td>
                         <div className="d-flex align-items-center">
-                            <i className="bi bi-fire text-danger me-1"></i>
+                            <i className="bi bi-person text-primary me-1"></i>
                             <span>{booking.CustomerSelected.Customer.User.FullName}</span>
                         </div>
                     </td>
-                    <td>{booking.Status}</td>
+                    <td>{getStatusBadge(booking.Status)}</td>
                     <td>{booking.ServiceDate}</td>
                     <td>{booking.StartTime}</td>
-                    <td>{booking.TotalAmount}</td>
+                    <td>
+                        <span className="fw-medium">
+                            {new Intl.NumberFormat('vi-VN', {
+                                style: 'currency',
+                                currency: 'VND'
+                            }).format(booking.TotalAmount)}
+                        </span>
+                    </td>
+                    <td>
+                        <div className="btn-group">
+                            {booking.Status !== -1 && (
+                                <>
+                                    {booking.Status === 0 && (
+                                        <button 
+                                            className="btn btn-sm btn-outline-success me-1" 
+                                            title="Xác nhận"
+                                        >
+                                            <i className="bi bi-check-lg"></i>
+                                        </button>
+                                    )}
+                                    <button 
+                                        className="btn btn-sm btn-outline-danger" 
+                                        title="Hủy booking"
+                                    >
+                                        <i className="bi bi-x-lg"></i>
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </td>
                 </tr>
                 {expandedBookingId === booking.ID && renderExpandedDetails(booking)}
             </React.Fragment>
