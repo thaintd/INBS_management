@@ -1,27 +1,160 @@
 import React, { useState, useEffect } from "react";
 import axiosInstance from "../services/axiosConfig";
+import { Modal, Form, Button } from "react-bootstrap";
 
 const ArtistManagement = () => {
   const [artists, setArtists] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [editingArtist, setEditingArtist] = useState(null);
+  const [formData, setFormData] = useState({
+    Level: 1,
+    YearsOfExperience: 0,
+    FullName: "",
+    NewImage: null,
+    ImageUrl: "",
+    PhoneNumber: "",
+    Email: "",
+    DateOfBirth: "",
+    artistServices: [],
+    artistStores: []
+  });
 
   useEffect(() => {
-    const handleGetArtist = async () => {
-      try {
-        const res = await axiosInstance.get(`/odata/artist?$select=id,username,yearsOfExperience,level,averageRating&$expand=user($select=fullName,phoneNumber,phoneNumber)`);
-        setArtists(res.value);
-      } catch (error) {
-        console.error("Error fetching artists:", error);
-      }
-    };
-    handleGetArtist();
+    fetchArtists();
   }, []);
+
+  const fetchArtists = async () => {
+    try {
+      const res = await axiosInstance.get(`/odata/artist?$select=id,username,yearsOfExperience,level,averageRating&$expand=user($select=fullName,phoneNumber,phoneNumber,email,DateOfBirth)`);
+      console.log(res.value);
+      setArtists(res.value);
+    } catch (error) {
+      console.error("Error fetching artists:", error);
+    }
+  };
+
+  const handleShowModal = (artist = null) => {
+    if (artist) {
+      setEditingArtist(artist);
+      const dateOfBirth = artist.User?.DateOfBirth ? new Date(artist.User.DateOfBirth).toISOString().split("T")[0] : "";
+      setFormData({
+        Level: artist.Level || 1,
+        YearsOfExperience: artist.YearsOfExperience || 0,
+        FullName: artist.User?.FullName || "",
+        ImageUrl: artist.User?.ImageUrl || "",
+        PhoneNumber: artist.User?.PhoneNumber || "",
+        Email: artist.User?.Email || "",
+        DateOfBirth: dateOfBirth,
+        NewImage: null,
+        artistServices: [],
+        artistStores: []
+      });
+    } else {
+      setEditingArtist(null);
+      setFormData({
+        Level: 1,
+        YearsOfExperience: 0,
+        FullName: "",
+        NewImage: null,
+        ImageUrl: "",
+        PhoneNumber: "",
+        Email: "",
+        DateOfBirth: "",
+        artistServices: [],
+        artistStores: []
+      });
+    }
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingArtist(null);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleImageChange = (e) => {
+    setFormData((prev) => ({
+      ...prev,
+      NewImage: e.target.files[0]
+    }));
+  };
+
+  const createArtist = async (formDataToSend) => {
+    try {
+      await axiosInstance.post("/api/Artist", formDataToSend, {
+        headers: {
+          "Content-Type": "multipart/form-data"
+        }
+      });
+      console.log("Artist created successfully");
+    } catch (error) {
+      console.error("Error creating artist:", error);
+      throw error;
+    }
+  };
+
+  const updateArtist = async (id, formDataToSend) => {
+    try {
+      await axiosInstance.put(`/api/Artist?id=${id}`, formDataToSend, {
+        headers: {
+          "Content-Type": "multipart/form-data"
+        }
+      });
+      console.log("Artist updated successfully");
+    } catch (error) {
+      console.error("Error updating artist:", error);
+      throw error;
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const formDataToSend = new FormData();
+      Object.keys(formData).forEach((key) => {
+        if (formData[key] !== null) {
+          formDataToSend.append(key, formData[key]);
+        }
+      });
+
+      if (editingArtist) {
+        await updateArtist(editingArtist.ID, formDataToSend);
+      } else {
+        await createArtist(formDataToSend);
+      }
+
+      handleCloseModal();
+      fetchArtists();
+    } catch (error) {
+      console.error("Error saving artist:", error);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa artist này?")) {
+      try {
+        await axiosInstance.delete(`/api/Artist?id=${id}`);
+        fetchArtists();
+      } catch (error) {
+        console.error("Error deleting artist:", error);
+      }
+    }
+  };
 
   return (
     <div className="card shadow-sm border-0">
       <div className="card-header bg-white py-3">
         <div className="d-flex justify-content-between align-items-center">
           <h5 className="card-title mb-0">Quản lý Artist</h5>
-          <button type="button" className="btn btn-sm btn-primary">
+          <button type="button" className="btn btn-sm btn-primary" onClick={() => handleShowModal()}>
             <i className="bi bi-plus-lg"></i> Thêm Artist
           </button>
         </div>
@@ -48,7 +181,7 @@ const ArtistManagement = () => {
                   <td>{artist.User?.PhoneNumber}</td>
                   <td>{artist.YearsOfExperience} năm</td>
                   <td>
-                    <span className={`badge ${artist.Level === "Expert" ? "bg-success" : artist.Level === "Intermediate" ? "bg-warning" : "bg-info"}`}>{artist.Level}</span>
+                    <span className={`badge ${artist.Level === 3 ? "bg-success" : artist.Level === 2 ? "bg-warning" : "bg-info"}`}>{artist.Level === 3 ? "Expert" : artist.Level === 2 ? "Intermediate" : "Beginner"}</span>
                   </td>
                   <td>
                     <div className="d-flex align-items-center">
@@ -57,10 +190,10 @@ const ArtistManagement = () => {
                     </div>
                   </td>
                   <td>
-                    <button className="btn btn-sm btn-outline-primary me-1">
+                    <button className="btn btn-sm btn-outline-primary me-1" onClick={() => handleShowModal(artist)}>
                       <i className="bi bi-pencil"></i>
                     </button>
-                    <button className="btn btn-sm btn-outline-danger">
+                    <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(artist.ID)}>
                       <i className="bi bi-trash"></i>
                     </button>
                   </td>
@@ -70,6 +203,57 @@ const ArtistManagement = () => {
           </table>
         </div>
       </div>
+
+      <Modal show={showModal} onHide={handleCloseModal}>
+        <Modal.Header closeButton>
+          <Modal.Title>{editingArtist ? "Chỉnh sửa Artist" : "Thêm Artist mới"}</Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleSubmit}>
+          <Modal.Body>
+            <Form.Group className="mb-3">
+              <Form.Label>Họ và tên</Form.Label>
+              <Form.Control type="text" name="FullName" value={formData.FullName} onChange={handleInputChange} required />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Email</Form.Label>
+              <Form.Control type="email" name="Email" value={formData.Email} onChange={handleInputChange} required />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Số điện thoại</Form.Label>
+              <Form.Control type="tel" name="PhoneNumber" value={formData.PhoneNumber} onChange={handleInputChange} required />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Ngày sinh</Form.Label>
+              <Form.Control type="date" name="DateOfBirth" value={formData.DateOfBirth} onChange={handleInputChange} required />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Số năm kinh nghiệm</Form.Label>
+              <Form.Control type="number" name="YearsOfExperience" value={formData.YearsOfExperience} onChange={handleInputChange} min="0" required />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Cấp độ</Form.Label>
+              <Form.Select name="Level" value={formData.Level} onChange={handleInputChange} required>
+                <option value={1}>Beginner</option>
+                <option value={2}>Intermediate</option>
+                <option value={3}>Expert</option>
+              </Form.Select>
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Hình ảnh</Form.Label>
+              <Form.Control type="file" onChange={handleImageChange} accept="image/*" />
+              {formData.ImageUrl && !formData.NewImage && <img src={formData.ImageUrl} alt="Current" className="mt-2" style={{ width: "100px", height: "100px", objectFit: "cover" }} />}
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={handleCloseModal}>
+              Hủy
+            </Button>
+            <Button variant="primary" type="submit">
+              {editingArtist ? "Cập nhật" : "Thêm mới"}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
     </div>
   );
 };
