@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import axiosInstance from "../services/axiosConfig";
-import { Modal, Form, Button } from "react-bootstrap";
+import { Modal, Form, Button, Spinner } from "react-bootstrap";
 
 const ArtistManagement = () => {
   const [artists, setArtists] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingArtist, setEditingArtist] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     Level: 1,
     YearsOfExperience: 0,
@@ -24,12 +26,14 @@ const ArtistManagement = () => {
   }, []);
 
   const fetchArtists = async () => {
+    setIsLoading(true);
     try {
       const res = await axiosInstance.get(`/odata/artist?$select=id,username,yearsOfExperience,level,averageRating&$expand=user($select=fullName,phoneNumber,phoneNumber,email,DateOfBirth)`);
-      console.log(res.value);
       setArtists(res.value);
     } catch (error) {
       console.error("Error fetching artists:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -117,6 +121,7 @@ const ArtistManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       const formDataToSend = new FormData();
       Object.keys(formData).forEach((key) => {
@@ -135,16 +140,21 @@ const ArtistManagement = () => {
       fetchArtists();
     } catch (error) {
       console.error("Error saving artist:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa artist này?")) {
+      setIsLoading(true);
       try {
         await axiosInstance.delete(`/api/Artist?id=${id}`);
         fetchArtists();
       } catch (error) {
         console.error("Error deleting artist:", error);
+      } finally {
+        setIsLoading(false);
       }
     }
   };
@@ -161,46 +171,54 @@ const ArtistManagement = () => {
       </div>
       <div className="card-body">
         <div className="table-responsive">
-          <table className="table table-hover">
-            <thead>
-              <tr>
-                <th>Tên Artist</th>
-                <th>Username</th>
-                <th>Số điện thoại</th>
-                <th>Kinh nghiệm</th>
-                <th>Cấp độ</th>
-                <th>Đánh giá</th>
-                <th>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {artists.map((artist) => (
-                <tr key={artist.ID}>
-                  <td>{artist.User?.FullName}</td>
-                  <td>{artist.Username}</td>
-                  <td>{artist.User?.PhoneNumber}</td>
-                  <td>{artist.YearsOfExperience} năm</td>
-                  <td>
-                    <span className={`badge ${artist.Level === 3 ? "bg-success" : artist.Level === 2 ? "bg-warning" : "bg-info"}`}>{artist.Level === 3 ? "Expert" : artist.Level === 2 ? "Intermediate" : "Beginner"}</span>
-                  </td>
-                  <td>
-                    <div className="d-flex align-items-center">
-                      <i className="bi bi-star-fill text-warning me-1"></i>
-                      <span>{artist.AverageRating}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <button className="btn btn-sm btn-outline-primary me-1" onClick={() => handleShowModal(artist)}>
-                      <i className="bi bi-pencil"></i>
-                    </button>
-                    <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(artist.ID)}>
-                      <i className="bi bi-trash"></i>
-                    </button>
-                  </td>
+          {isLoading ? (
+            <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "200px" }}>
+              <Spinner animation="border" role="status" variant="primary">
+                <span className="visually-hidden">Loading...</span>
+              </Spinner>
+            </div>
+          ) : (
+            <table className="table table-hover">
+              <thead>
+                <tr>
+                  <th>Tên Artist</th>
+                  <th>Username</th>
+                  <th>Số điện thoại</th>
+                  <th>Kinh nghiệm</th>
+                  <th>Cấp độ</th>
+                  <th>Đánh giá</th>
+                  <th>Thao tác</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {artists.map((artist) => (
+                  <tr key={artist.ID}>
+                    <td>{artist.User?.FullName}</td>
+                    <td>{artist.Username}</td>
+                    <td>{artist.User?.PhoneNumber}</td>
+                    <td>{artist.YearsOfExperience} năm</td>
+                    <td>
+                      <span className={`badge ${artist.Level === 3 ? "bg-success" : artist.Level === 2 ? "bg-warning" : "bg-info"}`}>{artist.Level === 3 ? "Expert" : artist.Level === 2 ? "Intermediate" : "Beginner"}</span>
+                    </td>
+                    <td>
+                      <div className="d-flex align-items-center">
+                        <i className="bi bi-star-fill text-warning me-1"></i>
+                        <span>{artist.AverageRating.toFixed(1)}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <button className="btn btn-sm btn-outline-primary me-1" onClick={() => handleShowModal(artist)}>
+                        <i className="bi bi-pencil"></i>
+                      </button>
+                      <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(artist.ID)}>
+                        <i className="bi bi-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 
@@ -212,27 +230,27 @@ const ArtistManagement = () => {
           <Modal.Body>
             <Form.Group className="mb-3">
               <Form.Label>Họ và tên</Form.Label>
-              <Form.Control type="text" name="FullName" value={formData.FullName} onChange={handleInputChange} required />
+              <Form.Control type="text" name="FullName" value={formData.FullName} onChange={handleInputChange} required disabled={isSubmitting} />
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Email</Form.Label>
-              <Form.Control type="email" name="Email" value={formData.Email} onChange={handleInputChange} required />
+              <Form.Control type="email" name="Email" value={formData.Email} onChange={handleInputChange} required disabled={isSubmitting} />
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Số điện thoại</Form.Label>
-              <Form.Control type="tel" name="PhoneNumber" value={formData.PhoneNumber} onChange={handleInputChange} required />
+              <Form.Control type="tel" name="PhoneNumber" value={formData.PhoneNumber} onChange={handleInputChange} required disabled={isSubmitting} />
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Ngày sinh</Form.Label>
-              <Form.Control type="date" name="DateOfBirth" value={formData.DateOfBirth} onChange={handleInputChange} required />
+              <Form.Control type="date" name="DateOfBirth" value={formData.DateOfBirth} onChange={handleInputChange} required disabled={isSubmitting} />
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Số năm kinh nghiệm</Form.Label>
-              <Form.Control type="number" name="YearsOfExperience" value={formData.YearsOfExperience} onChange={handleInputChange} min="0" required />
+              <Form.Control type="number" name="YearsOfExperience" value={formData.YearsOfExperience} onChange={handleInputChange} min="0" required disabled={isSubmitting} />
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Cấp độ</Form.Label>
-              <Form.Select name="Level" value={formData.Level} onChange={handleInputChange} required>
+              <Form.Select name="Level" value={formData.Level} onChange={handleInputChange} required disabled={isSubmitting}>
                 <option value={1}>Beginner</option>
                 <option value={2}>Intermediate</option>
                 <option value={3}>Expert</option>
@@ -240,16 +258,25 @@ const ArtistManagement = () => {
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Hình ảnh</Form.Label>
-              <Form.Control type="file" onChange={handleImageChange} accept="image/*" />
+              <Form.Control type="file" onChange={handleImageChange} accept="image/*" disabled={isSubmitting} />
               {formData.ImageUrl && !formData.NewImage && <img src={formData.ImageUrl} alt="Current" className="mt-2" style={{ width: "100px", height: "100px", objectFit: "cover" }} />}
             </Form.Group>
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" onClick={handleCloseModal}>
+            <Button variant="secondary" onClick={handleCloseModal} disabled={isSubmitting}>
               Hủy
             </Button>
-            <Button variant="primary" type="submit">
-              {editingArtist ? "Cập nhật" : "Thêm mới"}
+            <Button variant="primary" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
+                  {editingArtist ? "Đang cập nhật..." : "Đang thêm mới..."}
+                </>
+              ) : editingArtist ? (
+                "Cập nhật"
+              ) : (
+                "Thêm mới"
+              )}
             </Button>
           </Modal.Footer>
         </Form>

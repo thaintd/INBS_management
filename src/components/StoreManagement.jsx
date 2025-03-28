@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import axiosInstance from "../services/axiosConfig";
-import { Modal, Form, Button } from "react-bootstrap";
+import { Modal, Form, Button, Spinner } from "react-bootstrap";
 
 const StoreManagement = () => {
   const [stores, setStores] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingStore, setEditingStore] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     Address: "",
     Description: "",
@@ -19,6 +21,7 @@ const StoreManagement = () => {
   }, []);
 
   const fetchStores = async () => {
+    setIsLoading(true);
     try {
       const res = await axiosInstance.get(`/odata/store?$select=averageRating,status,imageUrl,description,address,id`);
       // Chuyển đổi status từ string sang số
@@ -29,6 +32,8 @@ const StoreManagement = () => {
       setStores(storesWithNumericStatus);
     } catch (error) {
       console.error("Error fetching stores:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -105,6 +110,7 @@ const StoreManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       const formDataToSend = new FormData();
       Object.keys(formData).forEach((key) => {
@@ -123,16 +129,21 @@ const StoreManagement = () => {
       fetchStores();
     } catch (error) {
       console.error("Error saving store:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa store này?")) {
+      setIsLoading(true);
       try {
         await axiosInstance.delete(`/api/Store?id=${id}`);
         fetchStores();
       } catch (error) {
         console.error("Error deleting store:", error);
+      } finally {
+        setIsLoading(false);
       }
     }
   };
@@ -149,46 +160,54 @@ const StoreManagement = () => {
       </div>
       <div className="card-body">
         <div className="table-responsive">
-          <table className="table table-hover">
-            <thead>
-              <tr>
-                <th>Hình ảnh</th>
-                <th>Địa chỉ</th>
-                <th>Mô tả</th>
-                <th>Đánh giá</th>
-                <th>Trạng thái</th>
-                <th>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stores.map((store) => (
-                <tr key={store.ID}>
-                  <td>
-                    <img src={store.ImageUrl} alt={store.Description} className="img-thumbnail" style={{ width: "50px", height: "50px", objectFit: "cover" }} />
-                  </td>
-                  <td>{store.Address}</td>
-                  <td>{store.Description}</td>
-                  <td>
-                    <div className="d-flex align-items-center">
-                      <i className="bi bi-star-fill text-warning me-1"></i>
-                      <span>{store.AverageRating.toFixed(1)}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <span className={`badge ${store.Status === 1 ? "bg-success" : "bg-danger"}`}>{store.Status === 1 ? "Hoạt động" : "Không hoạt động"}</span>
-                  </td>
-                  <td>
-                    <button className="btn btn-sm btn-outline-primary me-1" onClick={() => handleShowModal(store)}>
-                      <i className="bi bi-pencil"></i>
-                    </button>
-                    <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(store.ID)}>
-                      <i className="bi bi-trash"></i>
-                    </button>
-                  </td>
+          {isLoading ? (
+            <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "200px" }}>
+              <Spinner animation="border" role="status" variant="primary">
+                <span className="visually-hidden">Loading...</span>
+              </Spinner>
+            </div>
+          ) : (
+            <table className="table table-hover">
+              <thead>
+                <tr>
+                  <th>Hình ảnh</th>
+                  <th>Địa chỉ</th>
+                  <th>Mô tả</th>
+                  <th>Đánh giá</th>
+                  <th>Trạng thái</th>
+                  <th>Thao tác</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {stores.map((store) => (
+                  <tr key={store.ID}>
+                    <td>
+                      <img src={store.ImageUrl} alt={store.Description} className="img-thumbnail" style={{ width: "50px", height: "50px", objectFit: "cover" }} />
+                    </td>
+                    <td>{store.Address}</td>
+                    <td>{store.Description}</td>
+                    <td>
+                      <div className="d-flex align-items-center">
+                        <i className="bi bi-star-fill text-warning me-1"></i>
+                        <span>{store.AverageRating.toFixed(1)}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`badge ${store.Status === 1 ? "bg-success" : "bg-danger"}`}>{store.Status === 1 ? "Hoạt động" : "Không hoạt động"}</span>
+                    </td>
+                    <td>
+                      <button className="btn btn-sm btn-outline-primary me-1" onClick={() => handleShowModal(store)}>
+                        <i className="bi bi-pencil"></i>
+                      </button>
+                      <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(store.ID)}>
+                        <i className="bi bi-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 
@@ -200,31 +219,40 @@ const StoreManagement = () => {
           <Modal.Body>
             <Form.Group className="mb-3">
               <Form.Label>Địa chỉ</Form.Label>
-              <Form.Control type="text" name="Address" value={formData.Address} onChange={handleInputChange} required />
+              <Form.Control type="text" name="Address" value={formData.Address} onChange={handleInputChange} required disabled={isSubmitting} />
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Mô tả</Form.Label>
-              <Form.Control as="textarea" name="Description" value={formData.Description} onChange={handleInputChange} required />
+              <Form.Control as="textarea" name="Description" value={formData.Description} onChange={handleInputChange} required disabled={isSubmitting} />
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Hình ảnh</Form.Label>
-              <Form.Control type="file" onChange={handleImageChange} accept="image/*" />
+              <Form.Control type="file" onChange={handleImageChange} accept="image/*" disabled={isSubmitting} />
               {formData.ImageUrl && !formData.NewImage && <img src={formData.ImageUrl} alt="Current" className="mt-2" style={{ width: "100px", height: "100px", objectFit: "cover" }} />}
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Trạng thái</Form.Label>
-              <Form.Select name="Status" value={formData.Status} onChange={handleInputChange} required>
+              <Form.Select name="Status" value={formData.Status} onChange={handleInputChange} required disabled={isSubmitting}>
                 <option value={0}>Hoạt động</option>
                 <option value={1}>Không hoạt động</option>
               </Form.Select>
             </Form.Group>
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" onClick={handleCloseModal}>
+            <Button variant="secondary" onClick={handleCloseModal} disabled={isSubmitting}>
               Hủy
             </Button>
-            <Button variant="primary" type="submit">
-              {editingStore ? "Cập nhật" : "Thêm mới"}
+            <Button variant="primary" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
+                  {editingStore ? "Đang cập nhật..." : "Đang thêm mới..."}
+                </>
+              ) : editingStore ? (
+                "Cập nhật"
+              ) : (
+                "Thêm mới"
+              )}
             </Button>
           </Modal.Footer>
         </Form>

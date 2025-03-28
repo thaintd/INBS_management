@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
 import axiosInstance from "../services/axiosConfig";
-import { Modal, Form, Button, ListGroup } from "react-bootstrap";
+import { Modal, Form, Button, ListGroup, Spinner } from "react-bootstrap";
 
 const DesignManagement = () => {
   const [designs, setDesigns] = useState([]);
   const [expandedDesigns, setExpandedDesigns] = useState(new Set());
   const [designDetails, setDesignDetails] = useState({});
   const [showModal, setShowModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     Name: "",
     TrendScore: 0,
@@ -26,11 +28,14 @@ const DesignManagement = () => {
 
   useEffect(() => {
     const getDesigns = async () => {
+      setIsLoading(true);
       try {
         const res = await axiosInstance.get(`/odata/design?$select=id,name,trendscore,averageRating&$expand=medias($orderby=numerialOrder asc;$top=1;$select=imageUrl)`);
         setDesigns(res.value);
       } catch (error) {
         console.error("Error fetching designs:", error);
+      } finally {
+        setIsLoading(false);
       }
     };
     getDesigns();
@@ -38,6 +43,7 @@ const DesignManagement = () => {
 
   useEffect(() => {
     const fetchOptions = async () => {
+      setIsLoading(true);
       try {
         const [colorsRes, occasionsRes, skintonesRes, paintTypesRes, servicesRes] = await Promise.all([axiosInstance.get("/api/Adjective/Colors"), axiosInstance.get("/api/Adjective/Occasions"), axiosInstance.get("/api/Adjective/Skintone"), axiosInstance.get("/api/Adjective/PaintType"), axiosInstance.get(`/odata/service?$select=id,name,price,imageUrl,description`)]);
         setColors(colorsRes);
@@ -47,6 +53,8 @@ const DesignManagement = () => {
         setServices(servicesRes.value);
       } catch (error) {
         console.error("Error fetching options:", error);
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchOptions();
@@ -131,6 +139,7 @@ const DesignManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       const formDataToSend = new FormData();
 
@@ -188,13 +197,15 @@ const DesignManagement = () => {
     } catch (error) {
       console.error("Error creating design:", error);
       if (error.response?.data?.errors) {
-        // Log validation errors
         console.error("Validation errors:", error.response.data.errors);
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const getDesignDetails = async (id) => {
+    setIsLoading(true);
     try {
       // Get basic design info with medias, preferences, and nailDesigns
       const designRes = await axiosInstance.get(`/odata/design?$filter=id eq ${id}&$select=id,name,description,trendscore&$expand=medias($select=numerialOrder,imageUrl,mediatype),preferences,nailDesigns($select=id,imageUrl,nailposition,isleft)`);
@@ -235,6 +246,8 @@ const DesignManagement = () => {
       }));
     } catch (error) {
       console.error("Error fetching design details:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -265,118 +278,126 @@ const DesignManagement = () => {
       </div>
       <div className="card-body">
         <div className="table-responsive">
-          <table className="table table-hover">
-            <thead>
-              <tr>
-                <th style={{ width: "50px" }}></th>
-                <th>Hình ảnh</th>
-                <th>Tên Design</th>
-                <th>Trend Score</th>
-                <th>Đánh giá</th>
-                <th>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {designs.map((design) => (
-                <React.Fragment key={design.ID}>
-                  <tr>
-                    <td>
-                      <button className="btn btn-sm btn-link p-0" onClick={() => toggleDesign(design.ID)}>
-                        <i className={`bi bi-chevron-${expandedDesigns.has(design.ID) ? "down" : "right"}`}></i>
-                      </button>
-                    </td>
-                    <td>
-                      <img src={design.Medias?.[0]?.ImageUrl || "https://via.placeholder.com/50"} alt={design.Name} className="img-thumbnail" style={{ width: "50px", height: "50px", objectFit: "cover" }} />
-                    </td>
-                    <td>{design.Name}</td>
-                    <td>
-                      <div className="d-flex align-items-center">
-                        <i className="bi bi-fire text-danger me-1"></i>
-                        <span>{design.TrendScore}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="d-flex align-items-center">
-                        <i className="bi bi-star-fill text-warning me-1"></i>
-                        <span>{design.AverageRating.toFixed(1)}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <button className="btn btn-sm btn-outline-primary me-1">
-                        <i className="bi bi-pencil"></i>
-                      </button>
-                      <button className="btn btn-sm btn-outline-danger">
-                        <i className="bi bi-trash"></i>
-                      </button>
-                    </td>
-                  </tr>
-                  {expandedDesigns.has(design.ID) && designDetails[design.ID] && (
+          {isLoading ? (
+            <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "200px" }}>
+              <Spinner animation="border" role="status" variant="primary">
+                <span className="visually-hidden">Loading...</span>
+              </Spinner>
+            </div>
+          ) : (
+            <table className="table table-hover">
+              <thead>
+                <tr>
+                  <th style={{ width: "50px" }}></th>
+                  <th>Hình ảnh</th>
+                  <th>Tên Design</th>
+                  <th>Trend Score</th>
+                  <th>Đánh giá</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {designs.map((design) => (
+                  <React.Fragment key={design.ID}>
                     <tr>
-                      <td colSpan="6">
-                        <div className="p-3 bg-light">
-                          <h6 className="mb-3">Chi tiết Design</h6>
-                          <div className="table-responsive">
-                            <table className="table table-bordered table-sm">
-                              <thead>
-                                <tr>
-                                  <th style={{ width: "100px" }}>Hình ảnh</th>
-                                  <th>Vị trí</th>
-                                  <th>Bên</th>
-                                  <th>Dịch vụ</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {designDetails[design.ID].NailDesigns.map((nailDesign) => (
-                                  <tr key={nailDesign.ID}>
-                                    <td>
-                                      <div className="d-flex justify-content-center">
-                                        <img
-                                          src={nailDesign.ImageUrl}
-                                          alt={`Nail Design ${nailDesign.NailPosition}`}
-                                          style={{
-                                            width: "80px",
-                                            height: "80px",
-                                            objectFit: "cover",
-                                            borderRadius: "4px"
-                                          }}
-                                        />
-                                      </div>
-                                    </td>
-                                    <td>{nailDesign.NailPosition}</td>
-                                    <td>{nailDesign.isleft ? "Trái" : "Phải"}</td>
-                                    <td>
-                                      <div className="table-responsive">
-                                        <table className="table table-sm table-bordered mb-0">
-                                          <thead>
-                                            <tr>
-                                              <th>Tên dịch vụ</th>
-                                              <th>Giá</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {nailDesign.nailDesignServices.map((nds) => (
-                                              <tr key={nds.ID}>
-                                                <td>{nds.service.Name}</td>
-                                                <td className="text-primary">{nds.service.Price.toLocaleString()}đ</td>
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
+                      <td>
+                        <button className="btn btn-sm btn-link p-0" onClick={() => toggleDesign(design.ID)}>
+                          <i className={`bi bi-chevron-${expandedDesigns.has(design.ID) ? "down" : "right"}`}></i>
+                        </button>
+                      </td>
+                      <td>
+                        <img src={design.Medias?.[0]?.ImageUrl || "https://via.placeholder.com/50"} alt={design.Name} className="img-thumbnail" style={{ width: "50px", height: "50px", objectFit: "cover" }} />
+                      </td>
+                      <td>{design.Name}</td>
+                      <td>
+                        <div className="d-flex align-items-center">
+                          <i className="bi bi-fire text-danger me-1"></i>
+                          <span>{design.TrendScore}</span>
                         </div>
                       </td>
+                      <td>
+                        <div className="d-flex align-items-center">
+                          <i className="bi bi-star-fill text-warning me-1"></i>
+                          <span>{design.AverageRating.toFixed(1)}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <button className="btn btn-sm btn-outline-primary me-1">
+                          <i className="bi bi-pencil"></i>
+                        </button>
+                        <button className="btn btn-sm btn-outline-danger">
+                          <i className="bi bi-trash"></i>
+                        </button>
+                      </td>
                     </tr>
-                  )}
-                </React.Fragment>
-              ))}
-            </tbody>
-          </table>
+                    {expandedDesigns.has(design.ID) && designDetails[design.ID] && (
+                      <tr>
+                        <td colSpan="6">
+                          <div className="p-3 bg-light">
+                            <h6 className="mb-3">Chi tiết Design</h6>
+                            <div className="table-responsive">
+                              <table className="table table-bordered table-sm">
+                                <thead>
+                                  <tr>
+                                    <th style={{ width: "100px" }}>Hình ảnh</th>
+                                    <th>Vị trí</th>
+                                    <th>Bên</th>
+                                    <th>Dịch vụ</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {designDetails[design.ID].NailDesigns.map((nailDesign) => (
+                                    <tr key={nailDesign.ID}>
+                                      <td>
+                                        <div className="d-flex justify-content-center">
+                                          <img
+                                            src={nailDesign.ImageUrl}
+                                            alt={`Nail Design ${nailDesign.NailPosition}`}
+                                            style={{
+                                              width: "80px",
+                                              height: "80px",
+                                              objectFit: "cover",
+                                              borderRadius: "4px"
+                                            }}
+                                          />
+                                        </div>
+                                      </td>
+                                      <td>{nailDesign.NailPosition}</td>
+                                      <td>{nailDesign.isleft ? "Trái" : "Phải"}</td>
+                                      <td>
+                                        <div className="table-responsive">
+                                          <table className="table table-sm table-bordered mb-0">
+                                            <thead>
+                                              <tr>
+                                                <th>Tên dịch vụ</th>
+                                                <th>Giá</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {nailDesign.nailDesignServices.map((nds) => (
+                                                <tr key={nds.ID}>
+                                                  <td>{nds.service.Name}</td>
+                                                  <td className="text-primary">{nds.service.Price.toLocaleString()}đ</td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 
@@ -388,15 +409,15 @@ const DesignManagement = () => {
           <Modal.Body>
             <Form.Group className="mb-3">
               <Form.Label>Tên Design</Form.Label>
-              <Form.Control type="text" name="Name" value={formData.Name} onChange={handleInputChange} required />
+              <Form.Control type="text" name="Name" value={formData.Name} onChange={handleInputChange} required disabled={isSubmitting} />
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Trend Score</Form.Label>
-              <Form.Control type="number" name="TrendScore" value={formData.TrendScore} onChange={handleInputChange} required />
+              <Form.Control type="number" name="TrendScore" value={formData.TrendScore} onChange={handleInputChange} required disabled={isSubmitting} />
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Mô tả</Form.Label>
-              <Form.Control as="textarea" name="Description" value={formData.Description} onChange={handleInputChange} required />
+              <Form.Control as="textarea" name="Description" value={formData.Description} onChange={handleInputChange} required disabled={isSubmitting} />
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Màu sắc</Form.Label>
@@ -404,7 +425,7 @@ const DesignManagement = () => {
                 <ListGroup>
                   {colors.map((color) => (
                     <ListGroup.Item key={color.id}>
-                      <Form.Check type="checkbox" id={`color-${color.id}`} label={color.colorName} checked={formData.ColorIds.includes(color.id)} onChange={() => handleCheckboxChange(color.id, "ColorIds")} />
+                      <Form.Check type="checkbox" id={`color-${color.id}`} label={color.colorName} checked={formData.ColorIds.includes(color.id)} onChange={() => handleCheckboxChange(color.id, "ColorIds")} disabled={isSubmitting} />
                     </ListGroup.Item>
                   ))}
                 </ListGroup>
@@ -416,7 +437,7 @@ const DesignManagement = () => {
                 <ListGroup>
                   {occasions.map((occasion) => (
                     <ListGroup.Item key={occasion.id}>
-                      <Form.Check type="checkbox" id={`occasion-${occasion.id}`} label={occasion.name} checked={formData.OccasionIds.includes(occasion.id)} onChange={() => handleCheckboxChange(occasion.id, "OccasionIds")} />
+                      <Form.Check type="checkbox" id={`occasion-${occasion.id}`} label={occasion.name} checked={formData.OccasionIds.includes(occasion.id)} onChange={() => handleCheckboxChange(occasion.id, "OccasionIds")} disabled={isSubmitting} />
                     </ListGroup.Item>
                   ))}
                 </ListGroup>
@@ -428,7 +449,7 @@ const DesignManagement = () => {
                 <ListGroup>
                   {skintones.map((skintone) => (
                     <ListGroup.Item key={skintone.id}>
-                      <Form.Check type="checkbox" id={`skintone-${skintone.id}`} label={skintone.name} checked={formData.SkintoneIds.includes(skintone.id)} onChange={() => handleCheckboxChange(skintone.id, "SkintoneIds")} />
+                      <Form.Check type="checkbox" id={`skintone-${skintone.id}`} label={skintone.name} checked={formData.SkintoneIds.includes(skintone.id)} onChange={() => handleCheckboxChange(skintone.id, "SkintoneIds")} disabled={isSubmitting} />
                     </ListGroup.Item>
                   ))}
                 </ListGroup>
@@ -440,7 +461,7 @@ const DesignManagement = () => {
                 <ListGroup>
                   {paintTypes.map((paintType) => (
                     <ListGroup.Item key={paintType.id}>
-                      <Form.Check type="checkbox" id={`paintType-${paintType.id}`} label={paintType.name} checked={formData.PaintTypeIds.includes(paintType.id)} onChange={() => handleCheckboxChange(paintType.id, "PaintTypeIds")} />
+                      <Form.Check type="checkbox" id={`paintType-${paintType.id}`} label={paintType.name} checked={formData.PaintTypeIds.includes(paintType.id)} onChange={() => handleCheckboxChange(paintType.id, "PaintTypeIds")} disabled={isSubmitting} />
                     </ListGroup.Item>
                   ))}
                 </ListGroup>
@@ -448,7 +469,7 @@ const DesignManagement = () => {
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Hình ảnh Design</Form.Label>
-              <Form.Control type="file" multiple onChange={handleMediaChange} accept="image/*" required />
+              <Form.Control type="file" multiple onChange={handleMediaChange} accept="image/*" required disabled={isSubmitting} />
               <div className="d-flex flex-wrap gap-2 mt-2">
                 {formData.medias.map((media, index) => (
                   <img key={index} src={media.imageUrl} alt={`Design ${index + 1}`} style={{ width: "100px", height: "100px", objectFit: "cover" }} />
@@ -459,7 +480,7 @@ const DesignManagement = () => {
             <div className="mb-3">
               <div className="d-flex justify-content-between align-items-center mb-2">
                 <h6 className="mb-0">Nail Designs</h6>
-                <Button variant="outline-primary" size="sm" onClick={addNailDesign}>
+                <Button variant="outline-primary" size="sm" onClick={addNailDesign} disabled={isSubmitting}>
                   <i className="bi bi-plus-lg"></i> Thêm Nail Design
                 </Button>
               </div>
@@ -467,7 +488,7 @@ const DesignManagement = () => {
                 <div key={index} className="border p-3 mb-3 rounded">
                   <div className="d-flex justify-content-between mb-2">
                     <h6 className="mb-0">Nail Design {index + 1}</h6>
-                    <Button variant="outline-danger" size="sm" onClick={() => removeNailDesign(index)}>
+                    <Button variant="outline-danger" size="sm" onClick={() => removeNailDesign(index)} disabled={isSubmitting}>
                       <i className="bi bi-trash"></i>
                     </Button>
                   </div>
@@ -498,16 +519,17 @@ const DesignManagement = () => {
                       }}
                       accept="image/*"
                       required
+                      disabled={isSubmitting}
                     />
                     {design.imageUrl && <img src={design.imageUrl} alt={`Nail Design ${index + 1}`} className="mt-2" style={{ width: "100px", height: "100px", objectFit: "cover" }} />}
                   </Form.Group>
                   <Form.Group className="mb-2">
                     <Form.Label>Vị trí</Form.Label>
-                    <Form.Control type="number" name="nailPosition" value={design.nailPosition} onChange={(e) => handleNailDesignChange(e, index)} required />
+                    <Form.Control type="number" name="nailPosition" value={design.nailPosition} onChange={(e) => handleNailDesignChange(e, index)} required disabled={isSubmitting} />
                   </Form.Group>
                   <Form.Group className="mb-2">
                     <Form.Label>Bên</Form.Label>
-                    <Form.Select name="isLeft" value={design.isLeft} onChange={(e) => handleNailDesignChange(e, index)} required>
+                    <Form.Select name="isLeft" value={design.isLeft} onChange={(e) => handleNailDesignChange(e, index)} required disabled={isSubmitting}>
                       <option value={true}>Trái</option>
                       <option value={false}>Phải</option>
                     </Form.Select>
@@ -535,6 +557,7 @@ const DesignManagement = () => {
                                   index
                                 );
                               }}
+                              disabled={isSubmitting}
                             />
                           </ListGroup.Item>
                         ))}
@@ -546,11 +569,18 @@ const DesignManagement = () => {
             </div>
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" onClick={handleCloseModal}>
+            <Button variant="secondary" onClick={handleCloseModal} disabled={isSubmitting}>
               Hủy
             </Button>
-            <Button variant="primary" type="submit">
-              Thêm mới
+            <Button variant="primary" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
+                  Đang thêm mới...
+                </>
+              ) : (
+                "Thêm mới"
+              )}
             </Button>
           </Modal.Footer>
         </Form>
