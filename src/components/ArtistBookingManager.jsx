@@ -1,29 +1,16 @@
 import React, { useState, useEffect } from "react";
 import axiosInstance from "../services/axiosConfig";
 import { jwtDecode } from "jwt-decode";
-import { toast } from 'react-toastify';
 
-const BookingManagement = () => {
+const ArtistBookingManagement = () => {
     const [bookings, setBookings] = useState([]);
     const [currentPage, setCurrentPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
     const [expandedBookingId, setExpandedBookingId] = useState(null);
     const [bookingDetails, setBookingDetails] = useState({});
     const [pageSize, setPageSize] = useState(5);
-    const [status, setStatus] = useState(-2);
     
     const [isLoading, setIsLoading] = useState(false);
-
-    // Thêm state mới để quản lý các booking được chọn
-    const [selectedBookings, setSelectedBookings] = useState([]);
-    
-    // Thêm state để quản lý trạng thái loading thanh toán
-    const [isPaymentLoading, setIsPaymentLoading] = useState(false);
-
-    const postIsServing = async (bookingId) =>{
-        await axiosInstance.post(`/api/Booking/Serving?id=${bookingId}`);
-    }
-
 
     const fetchBasicCustomerInfo = async (customerSelectedID) => {
         const response = await axiosInstance.get(
@@ -86,54 +73,44 @@ const BookingManagement = () => {
         return response.value?.[0];
     };
 
-    const fetchBookings = async () => {
-        setIsLoading(true);
-        try {
-            const skip = currentPage * pageSize;
-            var token = localStorage.getItem("token")
-    const decodedToken = jwtDecode(token)
-    const id = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"]
-    const role = decodedToken["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"]
-
-    const baseUrl = "/odata/booking?";
-    const filter = role == 1 ? `artistStore/artistId eq ${id}` : "";
-    const filterStatus = status == -2 ? "" : `status eq ${status}`;
-    const combinedFilter = [filter, filterStatus].filter(Boolean).join(" and ");
-    const filterQuery = combinedFilter ? `$filter=${combinedFilter}&` : "";
-    const count = `$count=true`;
-            const pagination = `&$top=${pageSize}&$skip=${skip}`;
-            const select = `&$select=id,createdAt,lastModifiedAt,status,startTime,serviceDate,predictEndTime,totalAmount,customerSelectedId,artistStoreId`;
-
-            const url = `${baseUrl}${filterQuery}${count}${pagination}${select}`;
-            console.log(url);
-
-            const response = await axiosInstance.get(url);
-            
-            const totalCount = response["@odata.count"] ?? 0;
-            setTotalPages(Math.ceil(totalCount / pageSize));
-            
-            const bookings = response.value ?? [];
-
-            const bookingPromises = bookings.map(async (booking) => {
-                const customerSelected = await fetchBasicCustomerInfo(booking.CustomerSelectedId);
-                booking.CustomerSelected = customerSelected;
-                return booking;
-            });
-
-            const completedBookings = await Promise.all(bookingPromises);
-            setBookings(completedBookings);
-        } catch (error) {
-            console.error('Error fetching bookings:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    const getId = () =>{
+        var token = localStorage.getItem("token")
+        const decodedToken = jwtDecode(token)
+        return decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"];
+    }
 
     useEffect(() => {
-        
+        const fetchBookings = async () => {
+            setIsLoading(true);
+            try {
+                const skip = currentPage * pageSize;
+                const artistId = getId()
+                const response = await axiosInstance.get(
+                    `/odata/booking?$filter=artistStore/artistId eq ${artistId}&count=true&$top=${pageSize}&$skip=${skip}&$select=id,createdAt,lastModifiedAt,status,startTime,serviceDate,predictEndTime,totalAmount,customerSelectedId,artistStoreId`
+                );
+                
+                const totalCount = response["@odata.count"] ?? 0;
+                setTotalPages(Math.ceil(totalCount / pageSize));
+                
+                const bookings = response.value ?? [];
+
+                const bookingPromises = bookings.map(async (booking) => {
+                    const customerSelected = await fetchBasicCustomerInfo(booking.CustomerSelectedId);
+                    booking.CustomerSelected = customerSelected;
+                    return booking;
+                });
+
+                const completedBookings = await Promise.all(bookingPromises);
+                setBookings(completedBookings);
+            } catch (error) {
+                console.error('Error fetching bookings:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
         fetchBookings();
-    }, [currentPage, pageSize, status]);
+    }, [currentPage, pageSize]);
 
     const fetchBookingDetails = async (bookingId) => {
         const booking = bookings.find(b => b.ID === bookingId);
@@ -297,24 +274,12 @@ const BookingManagement = () => {
             <React.Fragment key={booking.ID}>
                 <tr className={booking.Status === -1 ? 'table-light' : ''}>
                     <td>
-                        {booking.Status === 2 && (
-                            <div className="form-check">
-                                <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    checked={selectedBookings.includes(booking.ID)}
-                                    onChange={() => handleSelectBooking(booking.ID)}
-                                />
-                            </div>
-                        )}
-                        {booking.Status !== 2 && (
-                            <button 
-                                className="btn btn-sm btn-link"
-                                onClick={() => toggleBookingDetails(booking.ID)}
-                            >
-                                <i className={`bi bi-chevron-${expandedBookingId === booking.ID ? 'up' : 'down'}`}></i>
-                            </button>
-                        )}
+                        <button 
+                            className="btn btn-sm btn-link"
+                            onClick={() => toggleBookingDetails(booking.ID)}
+                        >
+                            <i className={`bi bi-chevron-${expandedBookingId === booking.ID ? 'up' : 'down'}`}></i>
+                        </button>
                     </td>
                     <td>
                         <div className="d-flex align-items-center">
@@ -345,15 +310,6 @@ const BookingManagement = () => {
                                             <i className="bi bi-check-lg"></i>
                                         </button>
                                     )}
-                                    {booking.Status === 1 && (
-                                        <button 
-                                            className="btn btn-sm btn-outline-primary me-1" 
-                                            title="Bắt đầu phục vụ"
-                                            onClick={() => handleServing(booking.ID)}
-                                        >
-                                            <i className="bi bi-scissors"></i>
-                                        </button>
-                                    )}
                                     <button 
                                         className="btn btn-sm btn-outline-danger" 
                                         title="Hủy booking"
@@ -370,92 +326,11 @@ const BookingManagement = () => {
         ));
     };
 
-    // Thêm hàm xử lý thay đổi status
-    const handleStatusChange = (e) => {
-        setStatus(Number(e.target.value));
-        setCurrentPage(0); // Reset về trang đầu tiên khi thay đổi filter
-    };
-
-    // Thêm hàm xử lý serving
-    const handleServing = async (bookingId) => {
-        try {
-            await postIsServing(bookingId);
-            // Refresh lại data sau khi cập nhật
-            await fetchBookings();
-        } catch (error) {
-            console.error('Error updating booking status:', error);
-        }
-    };
-
-    // Thêm hàm xử lý chọn booking
-    const handleSelectBooking = (bookingId) => {
-        setSelectedBookings(prev => {
-            if (prev.includes(bookingId)) {
-                return prev.filter(id => id !== bookingId);
-            } else {
-                return [...prev, bookingId];
-            }
-        });
-    };
-
-    // Thêm hàm xử lý thanh toán
-    const handlePayment = async () => {
-        if (selectedBookings.length === 0) {
-            toast.warning('Vui lòng chọn ít nhất một booking để thanh toán');
-            return;
-        }
-
-        try {
-            setIsPaymentLoading(true);
-            const formData = new FormData()
-
-            selectedBookings.forEach((item,index) => 
-                formData.append(`paymentDetailRequests[${index}].bookingId`, item))
-
-            const response = await axiosInstance.post("/api/Payment/PayOSUrl", formData, {
-                headers: {
-                    "Content-Type": "multipart/form-data"
-                }
-            });
-            
-            if (response) {
-                window.location.href = response;
-            }
-        } catch (error) {
-            console.error('Error creating payment:', error);
-            toast.error('Có lỗi xảy ra khi tạo thanh toán. Vui lòng thử lại sau!', {
-                position: "top-right",
-                autoClose: 3000,
-            });
-        } finally {
-            setIsPaymentLoading(false);
-        }
-    };
-
     return (
         <div className="card shadow-sm border-0">
             <div className="card-header bg-white py-3">
                 <div className="d-flex justify-content-between align-items-center">
                     <h5 className="card-title mb-0">Quản lý Booking</h5>
-                    {selectedBookings.length > 0 && (
-                        <button 
-                            className="btn btn-primary"
-                            onClick={handlePayment}
-                            disabled={isPaymentLoading}
-                        >
-                            {isPaymentLoading ? (
-                                <>
-                                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                    Đang xử lý...
-                                </>
-                            ) : (
-                                <>
-                                    <i className="bi bi-credit-card me-2"></i>
-                                    Thanh toán ({selectedBookings.length})
-                                </>
-                            )}
-                        </button>
-                    )}
                 </div>
             </div>
             <div className="card-body">
@@ -465,21 +340,7 @@ const BookingManagement = () => {
                             <tr>
                                 <th></th>
                                 <th>Tên người đặt</th>
-                                <th>
-                                    <select 
-                                        className="form-select form-select-sm"
-                                        value={status}
-                                        onChange={handleStatusChange}
-                                        style={{ minWidth: '150px' }}
-                                    >
-                                        <option value={-2}>Tất cả trạng thái</option>
-                                        <option value={-1}>Đã hủy</option>
-                                        <option value={0}>Chờ xác nhận</option>
-                                        <option value={1}>Đã xác nhận</option>
-                                        <option value={2}>Đang phục vụ</option>
-                                        <option value={3}>Hoàn thành</option>
-                                    </select>
-                                </th>
+                                <th>Trạng thái</th>
                                 <th>Ngày bắt đầu</th>
                                 <th>Thời gian bắt đầu</th>
                                 <th>Tổng giá</th>
@@ -585,4 +446,4 @@ const BookingManagement = () => {
     );
 };
 
-export default BookingManagement;
+export default ArtistBookingManagement;

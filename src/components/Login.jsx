@@ -87,7 +87,7 @@ const Login = () => {
       formData.append("password", password);
 
       // Gọi API đăng nhập với multipart/form-data
-      const response = await axiosInstance.post("/Login", formData, {
+      const response = await axiosInstance.post("/api/Authentication/staff/login", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
           accept: "*/*"
