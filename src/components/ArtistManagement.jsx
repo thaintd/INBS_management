@@ -9,7 +9,6 @@ const ArtistManagement = () => {
       try {
         const res = await axiosInstance.get(`/odata/artist?$select=id,username,yearsOfExperience,level,averageRating&$expand=user($select=fullName,phoneNumber,phoneNumber)`);
         setArtists(res.value);
-        console.log(res);
       } catch (error) {
         console.error("Error fetching artists:", error);
       }

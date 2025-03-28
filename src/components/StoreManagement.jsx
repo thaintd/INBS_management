@@ -9,7 +9,6 @@ const StoreManagement = () => {
       try {
         const res = await axiosInstance.get(`/odata/store?$select=averageRating,status,imageUrl,description,address,id`);
         setStores(res.value);
-        console.log(res.value);
       } catch (error) {
         console.error("Error fetching stores:", error);
       }

@@ -42,10 +42,26 @@ const Dashboard = ({ setActiveTab }) => {
               <div className="bg-info bg-opacity-10 p-3 rounded">
                 <i className="bi bi-palette text-info fs-4"></i>
               </div>
-              <h5 className="card-title mb-0 ms-3">Quản lý Nail Design</h5>
+              <h5 className="card-title mb-0 ms-3">Quản lý Design</h5>
             </div>
             <p className="card-text text-muted">Xem và quản lý các mẫu nail design</p>
             <button className="btn btn-outline-info" onClick={() => setActiveTab("design")}>
+              Xem chi tiết
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className="col-md-4 mb-4">
+        <div className="card shadow-sm border-0 h-100">
+          <div className="card-body">
+            <div className="d-flex align-items-center mb-3">
+              <div className="bg-info bg-opacity-10 p-3 rounded">
+                <i className="bi bi-palette text-info fs-4"></i>
+              </div>
+              <h5 className="card-title mb-0 ms-3">Quản lý Service</h5>
+            </div>
+            <p className="card-text text-muted">Xem và quản lý các dịch vụ</p>
+            <button className="btn btn-outline-info" onClick={() => setActiveTab("service")}>
               Xem chi tiết
             </button>
           </div>
