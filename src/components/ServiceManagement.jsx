@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
 import axiosInstance from "../services/axiosConfig";
-import { Modal, Form, Button, ListGroup } from "react-bootstrap";
+import { Modal, Form, Button, ListGroup, Pagination } from "react-bootstrap";
 
 const ServiceManagement = () => {
   const [services, setServices] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingService, setEditingService] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [formData, setFormData] = useState({
     Name: "",
     Description: "",
@@ -18,17 +20,22 @@ const ServiceManagement = () => {
     serviceNailDesigns: []
   });
 
+  const itemsPerPage = 3;
+
+  const fetchServices = async (page = 1) => {
+    try {
+      const skip = (page - 1) * itemsPerPage;
+      const res = await axiosInstance.get(`/odata/service?$select=id,name,price,imageUrl,description,isAdditional&$count=true&$top=${itemsPerPage}&$skip=${skip}`);
+      setServices(res.value);
+      setTotalCount(res["@odata.count"]);
+    } catch (error) {
+      console.error("Error fetching services:", error);
+    }
+  };
+
   useEffect(() => {
-    const getServices = async () => {
-      try {
-        const res = await axiosInstance.get(`/odata/service?$select=id,name,price,imageUrl,description,isAdditional`);
-        setServices(res.value);
-      } catch (error) {
-        console.error("Error fetching services:", error);
-      }
-    };
-    getServices();
-  }, []);
+    fetchServices(currentPage);
+  }, [currentPage]);
 
   useEffect(() => {
     const getCategories = async () => {
@@ -41,6 +48,12 @@ const ServiceManagement = () => {
     };
     getCategories();
   }, []);
+
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   const handleShowModal = (service = null) => {
     if (service) {
@@ -140,8 +153,7 @@ const ServiceManagement = () => {
 
       handleCloseModal();
       // Refresh services list
-      const res = await axiosInstance.get(`/odata/service?$select=id,name,price,imageUrl,description,isAdditional`);
-      setServices(res.value);
+      fetchServices(currentPage);
     } catch (error) {
       console.error("Error saving service:", error);
       if (error.response?.data?.errors) {
@@ -155,8 +167,7 @@ const ServiceManagement = () => {
       try {
         await axiosInstance.delete(`/api/Service?id=${id}`);
         // Refresh services list
-        const res = await axiosInstance.get(`/odata/service?$select=id,name,price,imageUrl,description,isAdditional`);
-        setServices(res.value);
+        fetchServices(currentPage);
       } catch (error) {
         console.error("Error deleting service:", error);
       }
@@ -211,6 +222,23 @@ const ServiceManagement = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Phân trang */}
+        {totalPages > 1 && (
+          <div className="d-flex justify-content-center mt-4">
+            <Pagination>
+              <Pagination.First onClick={() => handlePageChange(1)} disabled={currentPage === 1} />
+              <Pagination.Prev onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} />
+              {[...Array(totalPages)].map((_, index) => (
+                <Pagination.Item key={index + 1} active={index + 1 === currentPage} onClick={() => handlePageChange(index + 1)}>
+                  {index + 1}
+                </Pagination.Item>
+              ))}
+              <Pagination.Next onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} />
+              <Pagination.Last onClick={() => handlePageChange(totalPages)} disabled={currentPage === totalPages} />
+            </Pagination>
+          </div>
+        )}
       </div>
 
       <Modal show={showModal} onHide={handleCloseModal} size="lg">
