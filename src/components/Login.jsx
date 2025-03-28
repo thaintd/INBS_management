@@ -63,14 +63,14 @@ const Login = () => {
 
   const registerDeviceToken = async (deviceToken, accessToken) => {
     try {
-      deviceToken = "aaaaa";
       const formData = new FormData();
       formData.append("PlatformType", 1);
       formData.append("Token", deviceToken);
 
       await axiosInstance.post(`/api/DeviceToken`, formData, {
         headers: {
-          Authorization: `Bearer ${accessToken}`
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "multipart/form-data"
         }
       });
     } catch (error) {
