@@ -63,6 +63,7 @@ const Login = () => {
 
   const registerDeviceToken = async (deviceToken, accessToken) => {
     try {
+      localStorage.setItem("deviceToken", deviceToken)
       const formData = new FormData();
       formData.append("PlatformType", 1);
       formData.append("Token", deviceToken);
