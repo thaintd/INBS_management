@@ -178,9 +178,9 @@ const BookingManagement = () => {
                             <div className="col-md-6">
                                 <p><strong>Thông tin khách hàng:</strong></p>
                                 <p>Số điện thoại: {details.customerSelected.Customer.User.PhoneNumber}</p>
-                                <p><strong>Thông tin Artist:</strong></p>
-                                <p>Tên: {details.artistStore.Artist.User.FullName}</p>
-                                <p>Kinh nghiệm: {details.artistStore.Artist.YearsOfExperience} năm</p>
+                                {/* <p><strong>Thông tin Artist:</strong></p> */}
+                                <p>Tên: {details.customerSelected.Customer.User.FullName}</p>
+                                {/* <p>Kinh nghiệm: {details.artistStore.Artist.YearsOfExperience} năm</p> */}
                             </div>
                             <div className="col-md-6">
                                 <p><strong>Dịch vụ đã chọn:</strong></p>
@@ -189,7 +189,6 @@ const BookingManagement = () => {
                                         <li key={index}>
                                             {service.NailDesignService.NailDesign.Design.Name} - 
                                             {service.NailDesignService.Service.Name} 
-                                            ({service.Duration} phút)
                                         </li>
                                     ))}
                                 </ul>
@@ -325,6 +324,7 @@ const BookingManagement = () => {
                     <td>{getStatusBadge(booking.Status)}</td>
                     <td>{booking.ServiceDate}</td>
                     <td>{booking.StartTime}</td>
+                    <td>{booking.PredictEndTime}</td>
                     <td>
                         <span className="fw-medium">
                             {new Intl.NumberFormat('vi-VN', {
@@ -354,12 +354,6 @@ const BookingManagement = () => {
                                             <i className="bi bi-scissors"></i>
                                         </button>
                                     )}
-                                    <button 
-                                        className="btn btn-sm btn-outline-danger" 
-                                        title="Hủy booking"
-                                    >
-                                        <i className="bi bi-x-lg"></i>
-                                    </button>
                                 </>
                             )}
                         </div>
@@ -482,6 +476,7 @@ const BookingManagement = () => {
                                 </th>
                                 <th>Ngày bắt đầu</th>
                                 <th>Thời gian bắt đầu</th>
+                                <th>Thời gian dự đoán kết thúc</th>
                                 <th>Tổng giá</th>
                                 <th>Thao tác</th>
                             </tr>

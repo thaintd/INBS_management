@@ -2,13 +2,6 @@ import React, { useEffect } from "react";
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { jwtDecode } from "jwt-decode";
-import Sidebar from "./Sidebar";
-import Dashboard from "./Dashboard";
-import StoreManagement from "./StoreManagement";
-import ArtistManagement from "./ArtistManagement";
-import DesignManagement from "./DesignManagement";
-import ServiceManagement from "./ServiceManagement";
 import BookingManagement from "./BookingManagement";
 import axiosInstance from "../services/axiosConfig";
 
@@ -21,11 +14,13 @@ const handleDeviceToken = async () => {
 
                 formData.append(`deviceToken`, localStorage.getItem("deviceToken"))
 
-            await axiosInstance.post("/api/DeviceToken", formData, {
+            var response = await axiosInstance.post("/api/DeviceToken", formData, {
                 headers: {
                     "Content-Type": "multipart/form-data"
                 }
             });
+            console.log(response);
+            
 }
 
     const handleLogout = async () => {
@@ -40,6 +35,8 @@ const handleDeviceToken = async () => {
                 }
             });
         } catch (error) {
+            console.log(error);
+            
             toast.error('Có lỗi xảy ra khi đăng xuất!');
         }
     };
