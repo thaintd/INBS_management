@@ -4,6 +4,7 @@ import Login from "./components/Login";
 import AdminDashboard from "./components/AdminDashboard";
 import ArtistDashboard from "./components/ArtistDashboard";
 import "bootstrap/dist/css/bootstrap.min.css";
+import Profile from "./components/Profile";
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/artist" element={<ArtistDashboard />} />
+        <Route path="/profile" element={<Profile/>}/>
       </Routes>
     </Router>
   );
